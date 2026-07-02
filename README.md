@@ -66,20 +66,18 @@ Random Forest classifier (`class_weight='balanced'` to address the ~86/14 label 
 The engineered `stressed` label independently recovers the 2012 Midwest drought — one of the most severe on record — as a clear spike (~40% of county-weeks labeled stressed that year, vs. low single digits in most other years), providing real-world validation that the label construction is sound.
 
 ## Repository Structure
-raw/
-ndvi/       MODIS NDVI/EVI extraction (via Earth Engine)
-usdm/       U.S. Drought Monitor county data (via REST API)
-weather/    gridMET weekly precipitation/temperature (via Earth Engine)
-processed/
-eda/        Exploratory data analysis plots
-models/     Confusion matrix, feature importance, ROC curve, trained model
-scripts/
-gee_ndvi_extraction.py       MODIS NDVI/EVI extraction
-fetch_usdm.py                 USDM drought data fetch
-gee_gridmet_extraction.py     gridMET weather extraction
-feature_engineering.py        Rolling/anomaly feature construction + label
-eda.py                        Exploratory analysis and plots
-model.py                      Random Forest training and evaluation
+
+- `raw/ndvi/` — MODIS NDVI/EVI extraction (via Earth Engine)
+- `raw/usdm/` — U.S. Drought Monitor county data (via REST API)
+- `raw/weather/` — gridMET weekly precipitation/temperature (via Earth Engine)
+- `processed/eda/` — Exploratory data analysis plots
+- `processed/models/` — Confusion matrix, feature importance, ROC curve, trained model
+- `scripts/gee_ndvi_extraction.py` — MODIS NDVI/EVI extraction
+- `scripts/fetch_usdm.py` — USDM drought data fetch
+- `scripts/gee_gridmet_extraction.py` — gridMET weather extraction
+- `scripts/feature_engineering.py` — Rolling/anomaly feature construction + label
+- `scripts/eda.py` — Exploratory analysis and plots
+- `scripts/model.py` — Random Forest training and evaluation
 
 ## How to Run
 1. Set up a Google Earth Engine project and register for noncommercial access
@@ -96,4 +94,3 @@ Python, pandas, scikit-learn, Google Earth Engine API, matplotlib/seaborn, USDM 
 - Recall on the stressed class (40%) leaves room for improvement — likely candidates include gradient boosting models (XGBoost/LightGBM), SPI/SPEI drought indices as direct inputs, and soil moisture data
 - NDVI's weak same-week predictive value suggests it may be better suited as a lagged/confirming feature (e.g., predicting *next* week's drought risk) rather than a concurrent one
 - The 20% area / D1+ severity threshold for the label was chosen for agricultural relevance but is one reasonable choice among several; sensitivity to this threshold was tested (D1+ vs. D2+) with minimal difference in outcome
-EOF
