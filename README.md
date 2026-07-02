@@ -1,4 +1,3 @@
-cat > README.md << 'EOF'
 # Corn Belt Drought Risk Classification
 
 A satellite- and climate-informed machine learning system for classifying county-level agricultural drought stress across the Corn Belt (Iowa, Illinois, Indiana), 2010–2023.
