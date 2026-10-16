@@ -26,7 +26,11 @@ for col in drought_cols:
     usdm[col] = pd.to_numeric(usdm[col], errors='coerce')
 
 usdm['total_area'] = usdm['None'] + usdm['D0'] + usdm['D1'] + usdm['D2'] + usdm['D3'] + usdm['D4']
-usdm['pct_severe_drought'] = (usdm['D2'] + usdm['D3'] + usdm['D4']) / usdm['total_area'] * 100
+# Keep label construction consistent with the documented target: D1-D4
+# covering at least 20% of the county area.
+usdm['pct_severe_drought'] = (
+    usdm['D1'] + usdm['D2'] + usdm['D3'] + usdm['D4']
+) / usdm['total_area'] * 100
 usdm['stressed'] = (usdm['pct_severe_drought'] >= 20).astype(int)
 
 # ---- 3. Load gridMET data ----
@@ -50,7 +54,7 @@ merged = pd.merge_asof(
     right_on='ValidStart',
     left_by='county_fips',
     right_by='FIPS',
-    direction='nearest',
+    direction='backward',
 )
 
 # ---- 5. Merge in nearest gridMET week (per county) ----
