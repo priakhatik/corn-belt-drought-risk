@@ -26,7 +26,7 @@ A county-week is labeled `stressed = 1` if ≥20% of its area is under USDM cate
 ### Feature engineering: the key finding
 Early modeling using single-timepoint (instantaneous) NDVI, precipitation, and temperature produced a weak model (**ROC-AUC 0.65**). Correlation analysis showed almost no relationship between raw NDVI and drought status — vegetation stress lags behind meteorological drought rather than tracking it in real time.
 
-The fix was reframing every feature as an **accumulated anomaly relative to each county's own seasonal climatology**, rather than a raw snapshot value — conceptually similar to how the companion FHB disease project used a biology-informed 15-day infection window instead of single-day weather readings.
+The fix was reframing every feature as an **accumulated anomaly relative to each county's own seasonal climatology**, rather than a raw snapshot value — conceptually similar to how the companion FHB disease project used a biology-informed 15-day infection window instead of single-day weather readings. To keep the held-out period honest, climatology is estimated from the 2010–2020 training years only; 2021–2023 observations do not contribute to the baseline used to compute their own anomaly features.
 
 Rolling window size was tested empirically rather than assumed:
 
@@ -49,7 +49,7 @@ Rolling window size was tested empirically rather than assumed:
 (Column names retain a `_4wk` suffix from an earlier iteration of the pipeline; the underlying window is 12 weeks.)
 
 ### Model
-Random Forest classifier (`class_weight='balanced'` to address the ~86/14 label imbalance), trained on 2010–2020 and tested on a held-out 2021–2023 window. A **year-based split** was used deliberately — a random row split would leak information between spatially correlated counties within the same drought event.
+Random Forest classifier (`class_weight='balanced'` to address the ~86/14 label imbalance), trained on 2010–2020 and tested on a held-out 2021–2023 window. A **year-based split** was used deliberately — a random row split would leak information between spatially correlated counties within the same drought event. Time-aligned weather and drought records are joined backward (latest observation at or before the NDVI date), rather than by nearest date, so future observations cannot enter a historical prediction row.
 
 ## Results
 
