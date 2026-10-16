@@ -29,11 +29,24 @@ gridmet['precip_roll4wk'] = (
     .transform(lambda x: x.rolling(window=12, min_periods=1).sum())
 )
 
-precip_climatology = (
-    gridmet.groupby(['county_fips', 'season_week'])['precip_mm']
-    .transform('mean')
+# The model trains on 2010-2020 and evaluates on 2021-2023. Build seasonal
+# climatology from the training period only so held-out weather cannot influence
+# test-set anomaly features.
+TRAIN_END_YEAR = 2020
+climatology = (
+    gridmet.loc[gridmet['year'] <= TRAIN_END_YEAR]
+    .groupby(['county_fips', 'season_week'], as_index=False)
+    .agg(
+        precip_climatology=('precip_mm', 'mean'),
+        tmax_climatology=('tmax_c', 'mean'),
+    )
 )
-gridmet['precip_climatology'] = precip_climatology
+gridmet = gridmet.merge(
+    climatology,
+    on=['county_fips', 'season_week'],
+    how='left',
+    validate='many_to_one',
+)
 
 gridmet['precip_climatology_roll4wk'] = (
     gridmet.groupby('county_fips')['precip_climatology']
@@ -50,11 +63,7 @@ gridmet['tmax_roll4wk'] = (
     .transform(lambda x: x.rolling(window=12, min_periods=1).mean())
 )
 
-tmax_climatology = (
-    gridmet.groupby(['county_fips', 'season_week'])['tmax_c']
-    .transform('mean')
-)
-gridmet['tmax_anomaly'] = gridmet['tmax_c'] - tmax_climatology
+gridmet['tmax_anomaly'] = gridmet['tmax_c'] - gridmet['tmax_climatology']
 
 gridmet['tmax_anomaly_roll4wk'] = (
     gridmet.groupby('county_fips')['tmax_anomaly']
@@ -109,7 +118,7 @@ merged = pd.merge_asof(
     right_on='week_start',
     left_by='county_fips',
     right_by='county_fips',
-    direction='nearest',
+    direction='backward',
 )
 
 usdm_sorted = usdm.sort_values('ValidStart')
@@ -122,7 +131,7 @@ final = pd.merge_asof(
     right_on='ValidStart',
     left_by='county_fips',
     right_by='FIPS',
-    direction='nearest',
+    direction='backward',
 )
 
 final = final.drop(columns=['FIPS', 'ValidStart', 'week_start'])
