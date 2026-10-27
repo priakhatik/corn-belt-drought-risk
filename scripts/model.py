@@ -52,8 +52,14 @@ if X_train.empty or X_test.empty:
 for name, labels in [('training', y_train), ('test', y_test)]:
     if set(labels.dropna().unique()) != {0, 1} or labels.isna().any():
         raise ValueError(f'{name} labels must contain both binary classes 0 and 1 for ROC-AUC')
-if X_train.isna().any().any() or X_test.isna().any().any():
-    raise ValueError('Feature matrix contains missing values; resolve them before model fitting')
+# Fail before creating artifacts when ingestion introduces nonnumeric or
+# non-finite measurements. NaN-only checks miss +/-infinity, which would
+# otherwise fail later inside scikit-learn after the output directory exists.
+for feature in feature_cols:
+    if not pd.api.types.is_numeric_dtype(X[feature]):
+        raise ValueError(f'Feature {feature} must be numeric')
+if not np.isfinite(X.to_numpy(dtype=float)).all():
+    raise ValueError('Feature matrix contains non-finite values; resolve them before model fitting')
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
 print(f'Train: {len(X_train)} rows ({train_mask.sum() / len(df) * 100:.1f}%), years 2010-2020')
