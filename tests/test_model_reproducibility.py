@@ -26,7 +26,7 @@ class ModelReproducibilityTests(unittest.TestCase):
         (self.root / "processed").mkdir()
         shutil.copy2(SOURCE, self.root / "scripts" / "model.py")
 
-    def write_data(self, single_class_test=False):
+    def write_data(self, single_class_test=False, feature_override=None):
         rows = []
         for i, year in enumerate((2019, 2019, 2020, 2020, 2021, 2021, 2022, 2022)):
             label = i % 2
@@ -34,6 +34,8 @@ class ModelReproducibilityTests(unittest.TestCase):
                 label = 0
             row = {"date": f"{year}-07-01", "stressed": label}
             row.update({name: float(i + 1 + j / 10) for j, name in enumerate(FEATURES)})
+            if i == 0 and feature_override is not None:
+                row["ndvi_mean"] = feature_override
             rows.append(row)
         with (self.root / "processed" / "corn_belt_features.csv").open("w", newline="") as stream:
             writer = csv.DictWriter(stream, fieldnames=["date", "stressed", *FEATURES])
@@ -55,6 +57,20 @@ class ModelReproducibilityTests(unittest.TestCase):
         for filename in ("confusion_matrix.png", "feature_importance.png",
                          "roc_curve.png", "drought_risk_rf_model.pkl"):
             self.assertTrue((self.root / "processed" / "models" / filename).is_file(), filename)
+
+    def test_infinite_feature_fails_before_creating_artifacts(self):
+        self.write_data(feature_override=float("inf"))
+        result = self.run_model()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Feature matrix contains non-finite values", result.stderr)
+        self.assertFalse((self.root / "processed" / "models").exists())
+
+    def test_nonnumeric_feature_fails_before_creating_artifacts(self):
+        self.write_data(feature_override="not-a-number")
+        result = self.run_model()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Feature ndvi_mean must be numeric", result.stderr)
+        self.assertFalse((self.root / "processed" / "models").exists())
 
     def test_single_class_test_period_fails_before_fitting(self):
         self.write_data(single_class_test=True)
