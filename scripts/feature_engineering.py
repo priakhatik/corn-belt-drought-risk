@@ -7,6 +7,8 @@ signal continues to strengthen with longer accumulation periods.
 
 import pandas as pd
 
+from temporal_alignment import join_latest_observation
+
 # ==================================================================
 # PART 1: Weekly gridMET rolling features
 # ==================================================================
@@ -110,7 +112,7 @@ usdm['stressed'] = (usdm['pct_severe_drought'] >= 20).astype(int)
 ndvi_sorted = ndvi.sort_values('date')
 gridmet_sorted = gridmet.sort_values('week_start')
 
-merged = pd.merge_asof(
+merged = join_latest_observation(
     ndvi_sorted,
     gridmet_sorted[['county_fips', 'week_start', 'precip_deficit_4wk',
                      'tmax_roll4wk', 'tmax_anomaly_roll4wk', 'precip_roll4wk']],
@@ -118,20 +120,18 @@ merged = pd.merge_asof(
     right_on='week_start',
     left_by='county_fips',
     right_by='county_fips',
-    direction='backward',
 )
 
 usdm_sorted = usdm.sort_values('ValidStart')
 merged_sorted = merged.sort_values('date')
 
-final = pd.merge_asof(
+final = join_latest_observation(
     merged_sorted,
     usdm_sorted[['FIPS', 'ValidStart', 'pct_severe_drought', 'stressed']],
     left_on='date',
     right_on='ValidStart',
     left_by='county_fips',
     right_by='FIPS',
-    direction='backward',
 )
 
 final = final.drop(columns=['FIPS', 'ValidStart', 'week_start'])
