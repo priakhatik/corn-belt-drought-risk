@@ -49,9 +49,12 @@ Rolling window size was tested empirically rather than assumed:
 (Column names retain a `_4wk` suffix from an earlier iteration of the pipeline; the underlying window is 12 weeks.)
 
 ### Model
-Random Forest classifier (`class_weight='balanced'` to address the ~86/14 label imbalance), trained on 2010–2020 and tested on a held-out 2021–2023 window. A **year-based split** was used deliberately — a random row split would leak information between spatially correlated counties within the same drought event. Time-aligned weather and drought records are joined backward (latest observation at or before the NDVI date), rather than by nearest date, so future observations cannot enter a historical prediction row.
+Random Forest classifier (`class_weight='balanced'` to address the ~86/14 label imbalance), trained on 2010–2020 and tested on a held-out 2021–2023 window. A **year-based split** was used deliberately — a random row split would leak information between spatially correlated counties within the same drought event. Time-aligned weather and drought records are joined backward (latest observation at or before the NDVI date), with a seven-day freshness limit. Missing weeks do not silently inherit arbitrarily old observations, and future weather cannot enter a historical prediction row.
 
 ## Results
+
+**Evaluation provenance:** The figures below predate the seven-day freshness guard on the time-series joins. The pipeline must be rerun on the source data and the held-out metrics recalculated before these figures can be presented as results of the hardened pipeline. This change is a data-integrity correction, not a demonstrated accuracy improvement.
+
 
 | Metric | Value |
 |---|---|
