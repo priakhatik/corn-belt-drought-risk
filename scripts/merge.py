@@ -1,8 +1,8 @@
 """
 Merge NDVI, USDM, and gridMET data into final modeling dataset.
 ====================================================================
-Aligns biweekly NDVI composites to the nearest weekly USDM/gridMET
-record per county, builds the drought stress label.
+Aligns biweekly NDVI composites to the latest prior weekly USDM/gridMET
+record per county (no more than seven days old), then builds the drought label.
 """
 
 import pandas as pd
@@ -58,7 +58,7 @@ merged = join_latest_observation(
     right_by='FIPS',
 )
 
-# ---- 5. Merge in nearest gridMET week (per county) ----
+# ---- 5. Merge in latest fresh gridMET week (per county) ----
 merged_sorted = merged.sort_values('date')
 gridmet_sorted = gridmet.sort_values('week_start')
 
