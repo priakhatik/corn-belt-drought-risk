@@ -1,11 +1,13 @@
 """
 Merge NDVI, USDM, and gridMET data into final modeling dataset.
 ====================================================================
-Aligns biweekly NDVI composites to the nearest weekly USDM/gridMET
-record per county, builds the drought stress label.
+Aligns biweekly NDVI composites to the latest prior weekly USDM/gridMET
+record per county (no more than seven days old), then builds the drought label.
 """
 
 import pandas as pd
+
+from temporal_alignment import join_latest_observation
 
 # ---- 1. Load NDVI data ----
 ndvi = pd.read_csv('raw/ndvi/corn_belt_ndvi_evi_2010_2023.csv')
@@ -47,28 +49,26 @@ gridmet['tmin_c'] = gridmet['tmin_k'] - 273.15
 ndvi_sorted = ndvi.sort_values('date')
 usdm_sorted = usdm.sort_values('ValidStart')
 
-merged = pd.merge_asof(
+merged = join_latest_observation(
     ndvi_sorted,
     usdm_sorted[['FIPS', 'ValidStart', 'pct_severe_drought', 'stressed']],
     left_on='date',
     right_on='ValidStart',
     left_by='county_fips',
     right_by='FIPS',
-    direction='backward',
 )
 
-# ---- 5. Merge in nearest gridMET week (per county) ----
+# ---- 5. Merge in latest fresh gridMET week (per county) ----
 merged_sorted = merged.sort_values('date')
 gridmet_sorted = gridmet.sort_values('week_start')
 
-final = pd.merge_asof(
+final = join_latest_observation(
     merged_sorted,
     gridmet_sorted[['county_fips', 'week_start', 'precip_mm', 'tmax_c', 'tmin_c']],
     left_on='date',
     right_on='week_start',
     left_by='county_fips',
     right_by='county_fips',
-    direction='nearest',
 )
 
 # ---- 6. Clean up and save ----
