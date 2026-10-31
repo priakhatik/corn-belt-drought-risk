@@ -1,7 +1,8 @@
 """Regression checks against future-observation and stale-week leakage."""
 
+import unittest
+
 import pandas as pd
-import pytest
 
 from scripts.temporal_alignment import join_latest_observation
 
@@ -23,32 +24,39 @@ def _join(left, right):
     )
 
 
-def test_future_observations_are_never_used():
-    left = _frame(["2021-07-01"], ["001"], left=True)
-    right = _frame(["2021-07-02"], ["001"], left=False)
-    result = _join(left, right)
-    assert pd.isna(result.iloc[0]["signal"])
+class TemporalAlignmentTests(unittest.TestCase):
+    def test_future_observations_are_never_used(self):
+        left = _frame(["2021-07-01"], ["001"], left=True)
+        right = _frame(["2021-07-02"], ["001"], left=False)
+        result = _join(left, right)
+        self.assertTrue(pd.isna(result.iloc[0]["signal"]))
+
+    def test_stale_observations_are_rejected_but_seven_day_boundary_is_included(self):
+        left = _frame(["2021-07-08", "2021-07-09"], ["001", "001"], left=True)
+        right = _frame(["2021-07-01"], ["001"], left=False)
+        result = _join(left, right).set_index("date")
+        self.assertEqual(result.loc[pd.Timestamp("2021-07-08"), "signal"], 1)
+        self.assertTrue(pd.isna(result.loc[pd.Timestamp("2021-07-09"), "signal"]))
+
+    def test_counties_are_isolated_even_when_dates_overlap(self):
+        left = _frame(["2021-07-05", "2021-07-05"], ["001", "002"], left=True)
+        right = _frame(["2021-07-01", "2021-07-04"], ["002", "001"], left=False)
+        result = _join(left, right).set_index("county_fips")
+        self.assertEqual(result.loc["001", "signal"], 2)
+        self.assertEqual(result.loc["002", "signal"], 1)
+
+    def test_missing_left_timestamp_fails_closed(self):
+        left = _frame([None], ["001"], left=True)
+        right = _frame(["2021-07-01"], ["001"], left=False)
+        with self.assertRaisesRegex(ValueError, "timestamps must not be missing"):
+            _join(left, right)
+
+    def test_missing_right_timestamp_fails_closed(self):
+        left = _frame(["2021-07-05"], ["001"], left=True)
+        right = _frame([None], ["001"], left=False)
+        with self.assertRaisesRegex(ValueError, "timestamps must not be missing"):
+            _join(left, right)
 
 
-def test_stale_observations_are_rejected_but_seven_day_boundary_is_included():
-    left = _frame(["2021-07-08", "2021-07-09"], ["001", "001"], left=True)
-    right = _frame(["2021-07-01"], ["001"], left=False)
-    result = _join(left, right).set_index("date")
-    assert result.loc[pd.Timestamp("2021-07-08"), "signal"] == 1
-    assert pd.isna(result.loc[pd.Timestamp("2021-07-09"), "signal"])
-
-
-def test_counties_are_isolated_even_when_dates_overlap():
-    left = _frame(["2021-07-05", "2021-07-05"], ["001", "002"], left=True)
-    right = _frame(["2021-07-01", "2021-07-04"], ["002", "001"], left=False)
-    result = _join(left, right).set_index("county_fips")
-    assert result.loc["001", "signal"] == 2
-    assert result.loc["002", "signal"] == 1
-
-
-@pytest.mark.parametrize("missing_left", [True, False])
-def test_missing_timestamps_fail_closed(missing_left):
-    left = _frame([None if missing_left else "2021-07-05"], ["001"], left=True)
-    right = _frame(["2021-07-01" if missing_left else None], ["001"], left=False)
-    with pytest.raises(ValueError, match="timestamps must not be missing"):
-        _join(left, right)
+if __name__ == "__main__":
+    unittest.main()
