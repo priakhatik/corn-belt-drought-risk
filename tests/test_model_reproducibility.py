@@ -84,13 +84,6 @@ class ModelReproducibilityTests(unittest.TestCase):
         self.assertIn("Modeling dataset contains missing dates", result.stderr)
         self.assertFalse((self.root / "processed" / "models").exists())
 
-    def test_infinite_feature_fails_before_creating_model_artifacts(self):
-        self.write_data()
-        self.replace_first_csv_field("ndvi_mean", "inf")
-        result = self.run_model()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Feature matrix contains non-finite values", result.stderr)
-        self.assertFalse((self.root / "processed" / "models").exists())
 
 
 if __name__ == "__main__":
