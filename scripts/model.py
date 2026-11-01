@@ -27,6 +27,9 @@ df = pd.read_csv(DATA_PATH)
 if df.empty:
     raise ValueError(f'Modeling dataset is empty: {DATA_PATH}')
 df['date'] = pd.to_datetime(df['date'])
+# Missing dates otherwise drop rows from both temporal partitions silently.
+if df['date'].isna().any():
+    raise ValueError('Modeling dataset contains missing dates; every row needs a temporal split')
 df['year'] = df['date'].dt.year
 
 # ---- 2. Define features (excluding leakage and identifier columns) ----

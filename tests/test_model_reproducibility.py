@@ -64,5 +64,27 @@ class ModelReproducibilityTests(unittest.TestCase):
         self.assertFalse((self.root / "processed" / "models").exists())
 
 
+    def replace_first_csv_field(self, field, value):
+        path = self.root / "processed" / "corn_belt_features.csv"
+        with path.open(newline="") as stream:
+            reader = csv.DictReader(stream)
+            fieldnames = reader.fieldnames
+            rows = list(reader)
+        rows[0][field] = value
+        with path.open("w", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+
+    def test_missing_date_cannot_silently_drop_temporal_sample(self):
+        self.write_data()
+        self.replace_first_csv_field("date", "")
+        result = self.run_model()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Modeling dataset contains missing dates", result.stderr)
+        self.assertFalse((self.root / "processed" / "models").exists())
+
+
+
 if __name__ == "__main__":
     unittest.main()
