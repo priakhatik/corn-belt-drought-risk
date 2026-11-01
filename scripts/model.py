@@ -27,6 +27,9 @@ df = pd.read_csv(DATA_PATH)
 if df.empty:
     raise ValueError(f'Modeling dataset is empty: {DATA_PATH}')
 df['date'] = pd.to_datetime(df['date'])
+# Missing dates otherwise drop rows from both temporal partitions silently.
+if df['date'].isna().any():
+    raise ValueError('Modeling dataset contains missing dates; every row needs a temporal split')
 df['year'] = df['date'].dt.year
 
 # ---- 2. Define features (excluding leakage and identifier columns) ----
@@ -54,6 +57,10 @@ for name, labels in [('training', y_train), ('test', y_test)]:
         raise ValueError(f'{name} labels must contain both binary classes 0 and 1 for ROC-AUC')
 if X_train.isna().any().any() or X_test.isna().any().any():
     raise ValueError('Feature matrix contains missing values; resolve them before model fitting')
+# Infinity is not missing according to pandas isna(), but is invalid for
+# RandomForest and must be rejected before creating model artifacts.
+if not np.isfinite(X.to_numpy(dtype=float)).all():
+    raise ValueError('Feature matrix contains non-finite values; resolve them before model fitting')
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
 print(f'Train: {len(X_train)} rows ({train_mask.sum() / len(df) * 100:.1f}%), years 2010-2020')
